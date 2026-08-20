@@ -465,6 +465,7 @@ pub struct GitHubRelease {
     pub tag_name: String,
     pub name: String,
     pub body: Option<String>,
+    pub draft: bool,
     pub prerelease: bool,
     pub assets: Vec<GitHubAsset>,
 }

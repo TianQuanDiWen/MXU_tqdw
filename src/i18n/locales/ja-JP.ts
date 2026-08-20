@@ -693,6 +693,7 @@ export default {
     releaseNotes: 'リリースノート',
     downloadNow: '今すぐダウンロード',
     later: '後で通知',
+    updateNow: '今すぐ更新',
     dismiss: 'このバージョンをスキップ',
     noReleaseNotes: 'リリースノートはありません',
     checkFailed: '更新の確認に失敗しました',

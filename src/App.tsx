@@ -1,10 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import {
-  useAppStore,
-  flushConfig,
-  flushSaveConfig,
-  type DownloadProgress,
-} from '@/stores/appStore';
+import { useAppStore, flushConfig, flushSaveConfig } from '@/stores/appStore';
 import {
   TitleBar,
   TabBar,
@@ -27,17 +22,13 @@ import {
   resolveI18nText,
   checkAndPrepareDownload,
   maaService,
-  proxySettingsForUpdateDownload,
   stopInstanceTasksAndExitApp,
 } from '@/services';
 import type { ConfigRecoveryNotice } from '@/services';
 import { loadIconAsDataUrl } from '@/services/contentResolver';
 import * as wsService from '@/services/wsService';
 import {
-  downloadUpdate,
-  getUpdateSavePath,
   consumeUpdateCompleteInfo,
-  savePendingUpdateInfo,
   getPendingUpdateInfo,
   clearPendingUpdateInfo,
   isDebugVersion,
@@ -190,7 +181,6 @@ function App() {
     setUpdateInfo,
     restoreBackendStates,
     setDownloadStatus,
-    setDownloadProgress,
     setDownloadSavePath,
     setJustUpdatedInfo,
     setShowInstallConfirmModal,
@@ -232,7 +222,6 @@ function App() {
       setUpdateInfo: state.setUpdateInfo,
       restoreBackendStates: state.restoreBackendStates,
       setDownloadStatus: state.setDownloadStatus,
-      setDownloadProgress: state.setDownloadProgress,
       setDownloadSavePath: state.setDownloadSavePath,
       setJustUpdatedInfo: state.setJustUpdatedInfo,
       setShowInstallConfirmModal: state.setShowInstallConfirmModal,
@@ -405,7 +394,6 @@ function App() {
   }, []);
 
   const initialized = useRef(false);
-  const downloadStartedRef = useRef(false);
   const pendingAutoTasksRef = useRef(false);
   // 尝试自动安装更新（无任务运行中时触发）
   const tryAutoInstallUpdate = useCallback(() => {
@@ -432,77 +420,6 @@ function App() {
       }
     });
   }, [tryAutoInstallUpdate]);
-
-  // 自动下载函数
-  const startAutoDownload = useCallback(
-    async (updateResult: NonNullable<Awaited<ReturnType<typeof checkAndPrepareDownload>>>) => {
-      if (!updateResult.downloadUrl || downloadStartedRef.current) return;
-
-      downloadStartedRef.current = true;
-      setDownloadStatus('downloading');
-      setDownloadProgress({
-        downloadedSize: 0,
-        totalSize: updateResult.fileSize || 0,
-        speed: 0,
-        progress: 0,
-      });
-
-      try {
-        const savePath = await getUpdateSavePath(updateResult.filename);
-        setDownloadSavePath(savePath);
-
-        const appState = useAppStore.getState();
-        const proxyForDownload = proxySettingsForUpdateDownload(
-          updateResult.downloadSource,
-          appState.proxySettings,
-          appState.mirrorChyanSettings.cdk,
-        );
-
-        const result = await downloadUpdate({
-          url: updateResult.downloadUrl,
-          savePath,
-          totalSize: updateResult.fileSize,
-          proxySettings: proxyForDownload,
-          onProgress: (progress: DownloadProgress) => {
-            setDownloadProgress(progress);
-          },
-        });
-
-        if (result.success) {
-          // 使用实际保存路径（可能与请求路径不同，如果从 302 重定向检测到正确文件名）
-          setDownloadSavePath(result.actualSavePath);
-          setDownloadStatus('completed');
-          log.info('更新下载完成');
-
-          // 保存待安装更新信息，以便下次启动时自动安装
-          savePendingUpdateInfo({
-            versionName: updateResult.versionName,
-            releaseNote: updateResult.releaseNote,
-            channel: updateResult.channel,
-            downloadSavePath: result.actualSavePath,
-            fileSize: updateResult.fileSize,
-            updateType: updateResult.updateType,
-            downloadSource: updateResult.downloadSource,
-            timestamp: Date.now(),
-          });
-
-          // 尝试自动安装更新
-          tryAutoInstallUpdate();
-        } else {
-          setDownloadStatus('failed');
-          // 下载失败时重置标志，允许后续重新下载（如填入 CDK 后切换下载源）
-          downloadStartedRef.current = false;
-          log.warn('更新下载失败');
-        }
-      } catch (error) {
-        log.error('更新下载出错:', error);
-        setDownloadStatus('failed');
-        // 下载出错时也重置标志
-        downloadStartedRef.current = false;
-      }
-    },
-    [setDownloadStatus, setDownloadProgress, setDownloadSavePath, tryAutoInstallUpdate],
-  );
 
   // 设置窗口标题（根据 ProjectInterface V2 协议）
   useEffect(() => {
@@ -1034,8 +951,11 @@ function App() {
         }
       }
 
-      // 自动检查更新并下载（调试版本跳过，MXU 开发模式跳过）
-      if (result.interface.mirrorchyan_rid && result.interface.version) {
+      // 自动检查更新并提示用户（调试版本跳过，MXU 开发模式跳过）
+      if (
+        (result.interface.mirrorchyan_rid || result.interface.github) &&
+        result.interface.version
+      ) {
         if (import.meta.env.DEV) {
           log.info('MXU 开发模式，跳过自动更新检查');
         } else if (isDebugVersion(result.interface.version)) {
@@ -1059,15 +979,6 @@ function App() {
               if (updateResult.hasUpdate) {
                 log.info(`发现新版本: ${updateResult.versionName}`);
                 useAppStore.getState().setShowUpdateDialog(true);
-                if (updateResult.downloadUrl) {
-                  startAutoDownload(updateResult);
-                  // 下载→安装→重启后任务在新版本上执行，挂起本次任务分发
-                  // 下载失败/取消时通过 pendingAutoTasksRef 恢复分发
-                  if (autoStartTasksPending) {
-                    autoStartTasksPending = false;
-                    pendingAutoTasksRef.current = true;
-                  }
-                }
               } else if (updateResult.errorCode) {
                 log.warn(`更新检查返回错误: code=${updateResult.errorCode}`);
                 useAppStore.getState().setShowUpdateDialog(true);
@@ -1079,7 +990,7 @@ function App() {
         }
       }
 
-      // 更新检查完毕，分发挂起的自动任务（有下载时已转移到 pendingAutoTasksRef）
+      // 更新检查完毕，分发挂起的自动任务
       dispatchPendingAutoStartTasks();
     } catch (err) {
       log.error('加载 interface.json 失败:', err);

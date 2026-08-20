@@ -669,6 +669,7 @@ export default {
     releaseNotes: '更新日志',
     downloadNow: '立即下载',
     later: '稍后提醒',
+    updateNow: '立即更新',
     dismiss: '忽略此版本',
     noReleaseNotes: '暂无更新日志',
     checkFailed: '检查更新失败',

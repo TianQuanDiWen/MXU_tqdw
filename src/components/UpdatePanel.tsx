@@ -1,14 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  X,
-  Download,
-  ChevronRight,
-  Maximize2,
-  AlertCircle,
-  RefreshCw,
-  AlertTriangle,
-} from 'lucide-react';
+import { X, Download, ChevronRight, Maximize2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { useAppStore, type DownloadProgress } from '@/stores/appStore';
 import { simpleMarkdownToHtml } from '@/services/contentResolver';
 import {
@@ -107,8 +99,6 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
     setDownloadProgress,
     setDownloadSavePath,
   ]);
-
-  // 自动下载已由 App.tsx 在检查更新后立即触发，此处不再重复处理
 
   // 打开更新详情/安装弹窗
   const handleOpenModal = useCallback(() => {
@@ -354,11 +344,22 @@ export function UpdatePanel({ onClose, anchorRef }: UpdatePanelProps) {
             />
           )}
 
-          {/* 等待下载（有链接但未开始） */}
+          {/* 等待用户确认更新 */}
           {updateInfo.downloadUrl && downloadStatus === 'idle' && (
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-              <span>{t('mirrorChyan.preparingDownload')}</span>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={onClose}
+                className="px-3 py-2 text-sm text-text-secondary hover:bg-bg-hover rounded-lg transition-colors"
+              >
+                {t('mirrorChyan.later')}
+              </button>
+              <button
+                onClick={startDownload}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-accent text-white hover:bg-accent-hover rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {t('mirrorChyan.updateNow')}
+              </button>
             </div>
           )}
         </div>

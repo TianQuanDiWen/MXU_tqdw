@@ -694,6 +694,7 @@ export default {
     releaseNotes: 'Release Notes',
     downloadNow: 'Download Now',
     later: 'Remind Later',
+    updateNow: 'Update Now',
     dismiss: 'Skip This Version',
     noReleaseNotes: 'No release notes available',
     checkFailed: 'Failed to check for updates',

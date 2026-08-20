@@ -229,12 +229,16 @@ export function UpdateSection() {
 
           if (result) {
             setUpdateInfo(result);
-            if (result.hasUpdate && result.downloadUrl && result.downloadSource === 'mirrorchyan') {
-              addDebugLog(`已切换到 Mirror酱 下载: ${result.versionName}`);
+            if (
+              result.hasUpdate &&
+              result.downloadUrl &&
+              (isDownloadingFromGitHub || isDownloadFailed)
+            ) {
+              addDebugLog(`已切换下载源: ${result.downloadSource}`);
               await startDownload(result);
             } else if (result.hasUpdate && result.downloadUrl) {
-              addDebugLog(`CDK 无效或不匹配，继续使用 ${result.downloadSource} 下载`);
-              await startDownload(result);
+              addDebugLog(`已获取 ${result.downloadSource} 下载链接，等待用户确认`);
+              setShowUpdateDialog(true);
             } else {
               addDebugLog('无法获取 Mirror酱 下载链接，请检查 CDK');
             }
@@ -257,6 +261,7 @@ export function UpdateSection() {
       resetDownloadState,
       setUpdateCheckLoading,
       setUpdateInfo,
+      setShowUpdateDialog,
       startDownload,
       addDebugLog,
     ],
@@ -303,8 +308,11 @@ export function UpdateSection() {
 
   // 检查更新
   const handleCheckUpdate = async () => {
-    if (!projectInterface?.mirrorchyan_rid || !projectInterface?.version) {
-      addDebugLog('未配置 mirrorchyan_rid 或 version，无法检查更新');
+    if (
+      (!projectInterface?.mirrorchyan_rid && !projectInterface?.github) ||
+      !projectInterface?.version
+    ) {
+      addDebugLog('未配置更新源或 version，无法检查更新');
       return;
     }
 
@@ -325,6 +333,7 @@ export function UpdateSection() {
         channel: mirrorChyanSettings.channel,
         userAgent: 'MXU',
         githubUrl: projectInterface.github,
+        githubPat: mirrorChyanSettings.githubPat || undefined,
         proxyUrl: proxySettings?.url,
         projectName: projectInterface.name,
       });
@@ -337,7 +346,6 @@ export function UpdateSection() {
             addDebugLog(
               `下载来源: ${result.downloadSource === 'github' ? 'GitHub' : 'Mirror酱 CDN'}`,
             );
-            startDownload(result);
           } else {
             addDebugLog('无可用下载链接');
           }
@@ -357,7 +365,7 @@ export function UpdateSection() {
     }
   };
 
-  if (!projectInterface?.mirrorchyan_rid) {
+  if (!projectInterface?.mirrorchyan_rid && !projectInterface?.github) {
     return null;
   }
 
@@ -378,7 +386,7 @@ export function UpdateSection() {
         ) : (
           <>
             {/* 更新频道 */}
-            <div>
+            <div className={clsx(!projectInterface.mirrorchyan_rid && 'hidden')}>
               <div className="flex items-center gap-3 mb-3">
                 <Download className="w-5 h-5 text-accent" />
                 <span className="font-medium text-text-primary">{t('mirrorChyan.channel')}</span>
@@ -410,7 +418,12 @@ export function UpdateSection() {
             </div>
 
             {/* CDK 输入 */}
-            <div className="pt-4 border-t border-border">
+            <div
+              className={clsx(
+                'pt-4 border-t border-border',
+                !projectInterface.mirrorchyan_rid && 'hidden',
+              )}
+            >
               <div className="flex items-center gap-3 mb-3">
                 <Key className="w-5 h-5 text-accent" />
                 <span className="font-medium text-text-primary">{t('mirrorChyan.cdk')}</span>
@@ -608,14 +621,6 @@ export function UpdateSection() {
                       }}
                       progressBgClass="bg-bg-secondary"
                     />
-                  )}
-
-                  {/* 等待下载 */}
-                  {updateInfo.downloadUrl && downloadStatus === 'idle' && (
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>{t('mirrorChyan.preparingDownload')}</span>
-                    </div>
                   )}
                 </div>
               )}

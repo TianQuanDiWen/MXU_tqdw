@@ -682,6 +682,7 @@ export default {
     releaseNotes: '릴리스 노트',
     downloadNow: '지금 다운로드',
     later: '나중에 알림',
+    updateNow: '지금 업데이트',
     dismiss: '이 버전 건너뛰기',
     noReleaseNotes: '릴리스 노트가 없습니다',
     checkFailed: '업데이트 확인에 실패했습니다',

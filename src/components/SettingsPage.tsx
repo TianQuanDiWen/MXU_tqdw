@@ -265,7 +265,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     }
     items.push({ id: 'general', icon: Settings2, labelKey: 'settings.general' });
     items.push({ id: 'hotkeys', icon: Key, labelKey: 'settings.hotkeys' });
-    if (projectInterface?.mirrorchyan_rid) {
+    if (projectInterface?.mirrorchyan_rid || projectInterface?.github) {
       items.push({ id: 'update', icon: Download, labelKey: 'mirrorChyan.title' });
     }
     items.push(
@@ -273,7 +273,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
       { id: 'about', icon: Info, labelKey: 'about.title' },
     );
     return items;
-  }, [projectInterface?.mirrorchyan_rid, settingsSections.length]);
+  }, [projectInterface?.mirrorchyan_rid, projectInterface?.github, settingsSections.length]);
 
   // 当前高亮的 section
   const [activeSection, setActiveSection] = useState('appearance');

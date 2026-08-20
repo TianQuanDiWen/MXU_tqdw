@@ -59,15 +59,14 @@ static DOWNLOAD_CANCELLED: AtomicBool = AtomicBool::new(false);
 /// 当前下载的 session ID，用于区分不同的下载任务
 static CURRENT_DOWNLOAD_SESSION: AtomicU64 = AtomicU64::new(0);
 
-/// 根据版本号获取 GitHub Release URL
+/// 获取 GitHub Release 信息
 ///
-/// 使用 GitHub API 获取指定版本的 Release 信息，支持使用 GitHub PAT 和代理
-/// 解析 GitHub API 返回的 JSON 数据，找到与 target_version 匹配的 release，并返回 URL
+/// target_version 存在时获取指定版本，否则获取最新稳定版本。支持 GitHub PAT 和代理。
 #[tauri::command]
 pub async fn get_github_release_by_version(
     owner: String,
     repo: String,
-    target_version: String,
+    target_version: Option<String>,
     github_pat: Option<String>,
     proxy_url: Option<String>,
 ) -> Result<Option<GitHubRelease>, String> {
@@ -125,23 +124,29 @@ pub async fn get_github_release_by_version(
         .await
         .map_err(|e| format!("解析 JSON 失败: {}", e))?;
 
-    let normalize = |v: &str| {
-        v.trim_start_matches(|c| c == 'v' || c == 'V')
-            .to_lowercase()
-    };
-    let target_normalized = normalize(&target_version);
+    if let Some(target_version) = target_version {
+        let normalize = |v: &str| {
+            v.trim_start_matches(|c| c == 'v' || c == 'V')
+                .to_lowercase()
+        };
+        let target_normalized = normalize(&target_version);
 
-    for release in releases {
-        if normalize(&release.tag_name) == target_normalized {
-            info!(
-                "找到匹配的 Release: {} (tag: {})",
-                release.name, release.tag_name
-            );
-            return Ok(Some(release));
+        for release in releases {
+            if normalize(&release.tag_name) == target_normalized {
+                info!(
+                    "找到匹配的 Release: {} (tag: {})",
+                    release.name, release.tag_name
+                );
+                return Ok(Some(release));
+            }
         }
+        warn!("未找到匹配的 Release: target_version={}", target_version);
+        return Ok(None);
     }
-    warn!("未找到匹配的 Release: target_version={}", target_version);
-    Ok(None)
+
+    Ok(releases
+        .into_iter()
+        .find(|release| !release.draft && !release.prerelease))
 }
 
 /// 流式下载文件，支持进度回调和取消

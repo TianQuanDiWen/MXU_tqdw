@@ -397,7 +397,6 @@ export async function checkUpdate(options: CheckUpdateOptions): Promise<UpdateIn
  * 判断是否为非正式版本（不进行自动更新）
  * 非正式版本定义：
  * - 版本号为 "DEBUG_VERSION"
- * - 版本号小于 "1.0.0"
  * - 版本号包含预发布标签，且不是 beta 或 rc（如 v2.0.2-ci.123、v1.0.0-alpha.1）
  */
 export function isDebugVersion(version: string | undefined): boolean {
@@ -409,7 +408,6 @@ export function isDebugVersion(version: string | undefined): boolean {
   // 优先尝试完整解析（保留预发布标签如 -ci.123、-beta.1）
   const parsed = semver.parse(normalized);
   if (parsed) {
-    if (semver.lt(parsed, '1.0.0')) return true;
     if (parsed.prerelease.length > 0) {
       const UPDATEABLE_TAGS = ['beta', 'rc'];
       const isUpdateable = parsed.prerelease.some(
@@ -420,11 +418,7 @@ export function isDebugVersion(version: string | undefined): boolean {
     return false;
   }
 
-  // 回退到 coerce（处理非标准版本号，会丢失预发布标签）
-  const coerced = semver.coerce(normalized);
-  if (!coerced) return false;
-
-  return semver.lt(coerced, '1.0.0');
+  return false;
 }
 
 /**
@@ -493,7 +487,7 @@ function parseGitHubUrl(url: string): { owner: string; repo: string } | null {
 async function getGitHubReleaseByVersion(
   owner: string,
   repo: string,
-  targetVersion: string,
+  targetVersion: string | undefined,
   githubPat?: string,
   proxyUrl?: string,
 ): Promise<GitHubRelease | null> {
@@ -501,7 +495,7 @@ async function getGitHubReleaseByVersion(
     return await invoke<GitHubRelease | null>('get_github_release_by_version', {
       owner,
       repo,
-      targetVersion,
+      targetVersion: targetVersion ?? null,
       githubPat,
       proxyUrl: proxyUrl,
     });
@@ -853,7 +847,8 @@ export async function downloadUpdate(
   }
 }
 
-export interface CheckAndDownloadOptions extends CheckUpdateOptions {
+export interface CheckAndDownloadOptions extends Omit<CheckUpdateOptions, 'resourceId'> {
+  resourceId?: string;
   githubUrl?: string;
   githubPat?: string; // GitHub Personal Access Token
   proxyUrl?: string; // 代理 URL，用于 GitHub API 请求
@@ -862,7 +857,7 @@ export interface CheckAndDownloadOptions extends CheckUpdateOptions {
 
 /**
  * 检查更新并获取下载信息
- * 始终使用 Mirror酱 检查更新，根据是否有 CDK 决定下载来源
+ * 优先使用已配置的 Mirror酱检查更新；未配置时直接使用 GitHub 最新稳定 Release
  */
 export async function checkAndPrepareDownload(
   options: CheckAndDownloadOptions,
@@ -875,8 +870,75 @@ export async function checkAndPrepareDownload(
 
   const { githubUrl, cdk, channel, githubPat, projectName, proxyUrl, ...checkOptions } = options;
 
-  // 始终使用 Mirror酱 检查更新
-  const updateInfo = await checkUpdate({ ...checkOptions, cdk, channel });
+  const resourceId = checkOptions.resourceId;
+  if (!resourceId && githubUrl) {
+    log.info('未提供 mirrorchyan_rid，尝试仅使用 GitHub 获取最新 release');
+    const parsed = parseGitHubUrl(githubUrl);
+    if (parsed) {
+      const { owner, repo } = parsed;
+      const latest = await getGitHubReleaseByVersion(owner, repo, undefined, githubPat, proxyUrl);
+      if (latest) {
+        const latestVersion = latest.tag_name;
+        const hasUpdate = compareVersions(latestVersion, checkOptions.currentVersion) > 0;
+        if (!hasUpdate) {
+          log.info(`GitHub: 最新版本 ${latestVersion}，无更新`);
+          return {
+            hasUpdate: false,
+            versionName: latestVersion,
+            releaseNote: latest.body || '',
+          };
+        }
+
+        const asset = await matchGitHubAsset(latest.assets);
+        if (asset) {
+          log.info(`GitHub: 匹配到资产 ${asset.name}`);
+          return {
+            hasUpdate: true,
+            versionName: latestVersion,
+            releaseNote: latest.body || '',
+            downloadUrl: asset.browser_download_url,
+            fileSize: asset.size,
+            filename: asset.name,
+            downloadSource: 'github',
+          };
+        }
+
+        if (projectName) {
+          const direct = await tryDirectDownloadUrls(owner, repo, projectName, latestVersion);
+          if (direct) {
+            return {
+              hasUpdate: true,
+              versionName: latestVersion,
+              releaseNote: latest.body || '',
+              downloadUrl: direct.url,
+              fileSize: 0,
+              filename: direct.filename,
+              downloadSource: 'github',
+            };
+          }
+        }
+
+        log.warn('GitHub: 未找到可下载的 asset');
+        return {
+          hasUpdate: true,
+          versionName: latestVersion,
+          releaseNote: latest.body || '',
+        };
+      }
+      log.warn('无法从 GitHub 获取 release 列表');
+    } else {
+      log.warn('无法解析 GitHub URL:', githubUrl);
+    }
+    return null;
+  }
+
+  if (!resourceId) {
+    log.warn('未配置 mirrorchyan_rid 或 GitHub URL，跳过更新检查');
+    return null;
+  }
+
+  // 已配置 mirrorchyan_rid 时，继续使用 Mirror酱 检查更新
+  const updateInfo = await checkUpdate({ ...checkOptions, resourceId, cdk, channel });
 
   if (!updateInfo || !updateInfo.hasUpdate) {
     return updateInfo;
@@ -896,6 +958,7 @@ export async function checkAndPrepareDownload(
 
   // 没有 CDK 且没有错误码，尝试使用 GitHub
   if (githubUrl) {
+    // 兼容原有流程：在 MirrorChyan 返回版本号时，优先按版本从 GitHub 查找 asset
     log.info(`无 CDK，尝试从 GitHub 获取版本 ${updateInfo.versionName}`);
     const githubDownload = await getGitHubDownloadUrl({
       githubUrl,
