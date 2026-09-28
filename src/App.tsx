@@ -25,7 +25,7 @@ import {
   stopInstanceTasksAndExitApp,
 } from '@/services';
 import type { ConfigRecoveryNotice } from '@/services';
-import { loadIconAsDataUrl } from '@/services/contentResolver';
+import { clearIconDataUrlCache, loadIconAsDataUrl } from '@/services/contentResolver';
 import * as wsService from '@/services/wsService';
 import {
   consumeUpdateCompleteInfo,
@@ -395,12 +395,16 @@ function App() {
 
   const initialized = useRef(false);
   const pendingAutoTasksRef = useRef(false);
+  // 自动任务已分发但尚未完成启动时，也要阻止下载完成触发自动安装。
+  // 否则小体积更新可能在 500ms 的任务分发延迟或连接准备期间先完成下载。
+  const autoTaskLaunchPendingRef = useRef(false);
   // 尝试自动安装更新（无任务运行中时触发）
   const tryAutoInstallUpdate = useCallback(() => {
     const state = useAppStore.getState();
     if (state.downloadStatus !== 'completed') return;
     if (state.installStatus !== 'idle') return;
     if (state.autoInstallPending) return;
+    if (autoTaskLaunchPendingRef.current) return;
     if (state.instances.some((i) => i.isRunning)) return;
 
     log.info('自动安装更新：条件满足，弹出安装');
@@ -507,6 +511,8 @@ function App() {
       log.info('加载 interface.json...');
       const result = await autoLoadInterface();
       setProjectInterface(result.interface);
+      // 资源目录可能被换掉：先失效图标 data URL 缓存，避免复用旧资源包的图标
+      clearIconDataUrlCache();
       setBasePath(result.basePath);
       setDataPath(result.dataPath);
       // 缓存后端真实 OS/架构，供控制器过滤、更新资产匹配、useCmd 开关等消费
@@ -575,6 +581,7 @@ function App() {
           environment: sentryCfg.environment ?? channel,
           tracing: sentryCfg.tracing ?? true,
           tracesSampleRate: sentryCfg.traces_sample_rate ?? 1.0,
+          failureAttachmentsSampleRate: sentryCfg.failure_attachments_sample_rate ?? 1.0,
           appName,
           appVersion,
           mxuVersion,
@@ -781,7 +788,8 @@ function App() {
 
       // 检查是否为开机自启动，若配置了自动执行的实例则激活并启动任务
       // 或者手动启动时，如果勾选了"手动启动时也自动执行"，也自动执行
-      // 任务分发延迟到更新检查之后（有更新时先更新再跑任务）
+      // 任务分发延迟到更新检查之后；仅检测到已下载待安装包时阻塞任务执行。
+      // 新版本下载在后台进行，不影响本次任务启动。
       let autoStartTasksPending = false;
       let isAutoRunOnLaunchMode = false;
       if (isTauri()) {
@@ -854,9 +862,20 @@ function App() {
       const dispatchPendingAutoStartTasks = () => {
         if (!autoStartTasksPending) return;
         autoStartTasksPending = false;
+        autoTaskLaunchPendingRef.current = true;
         setTimeout(() => {
           document.dispatchEvent(
-            new CustomEvent('mxu-start-tasks', { detail: { source: 'autostart' } }),
+            new CustomEvent('mxu-start-tasks', {
+              detail: {
+                source: 'autostart',
+                onSettled: () => {
+                  autoTaskLaunchPendingRef.current = false;
+                  // 启动失败时任务不会产生 running -> idle 状态变化，需要在这里补一次安装检查；
+                  // 启动成功时仍处于运行态，本次检查会直接返回，并在任务结束后再次触发。
+                  tryAutoInstallUpdate();
+                },
+              },
+            }),
           );
         }, 500);
       };
@@ -1179,8 +1198,11 @@ function App() {
       kind === 'task-progress' ||
       kind === 'tasks-completed';
 
-    const handleStateChanged = (_instanceId: string, kind: string) => {
+    const handleStateChanged = (instanceId: string, kind: string) => {
       if (isTaskKind(kind)) pendingTaskKind = true;
+      if (kind === 'tasks-completed') {
+        useAppStore.getState().clearAllTaskRunOnce(instanceId);
+      }
       if (debounceTimer) clearTimeout(debounceTimer);
       const shouldSyncRunning = pendingTaskKind;
       debounceTimer = setTimeout(async () => {

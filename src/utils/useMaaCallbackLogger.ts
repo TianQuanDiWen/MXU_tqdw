@@ -11,7 +11,7 @@ import { loggers } from '@/utils/logger';
 import i18n, { getInterfaceLangKey } from '@/i18n';
 import { getMxuSpecialTask } from '@/types/specialTasks';
 import { isTauri } from '@/utils/paths';
-import { isDesktopWindowControllerType } from '@/utils/controller';
+import { isDesktopWindowControllerType, getLinuxDeviceName } from '@/utils/controller';
 import * as wsService from '@/services/wsService';
 import {
   resolveI18nText,
@@ -19,6 +19,7 @@ import {
   resolveContent,
   markdownToHtmlWithLocalImages,
 } from '@/services/contentResolver';
+import { hasRichTextFeatures } from '@/utils/richText';
 import type { FocusTemplate, FocusDisplayChannel } from '@/types/interface';
 
 const log = loggers.app;
@@ -131,13 +132,8 @@ async function resolveFocusContent(
 
   // 5. 如果是直接文本，检查是否包含富文本特征
   if (contentType === 'text') {
-    // 检测是否包含 Markdown 语法、HTML 标签或 URL
-    const hasRichContent =
-      /[*_`#\[\]!]/.test(resolved) || // Markdown 语法
-      resolved.includes('\n') || // 多行内容
-      /<[a-z][\s\S]*?>/i.test(resolved) || // HTML 标签
-      /https?:\/\/\S+/.test(resolved); // URL
-    if (hasRichContent) {
+    // 判定规则集中在 utils/richText，避免各处各写一套正则
+    if (hasRichTextFeatures(resolved)) {
       const html = await markdownToHtmlWithLocalImages(resolved, basePath);
       return { message: resolved, html };
     }
@@ -163,7 +159,10 @@ function isConnectAction(details: MaaCallbackDetails): boolean {
 }
 
 // 从当前实例配置推断控制器类型和名称（用于解决回调时序问题）
-function inferCtrlInfoFromInstance(instanceId: string): {
+function inferCtrlInfoFromInstance(
+  instanceId: string,
+  labels: { portal: string; linux: string },
+): {
   type: 'device' | 'window' | undefined;
   name: string | undefined;
 } {
@@ -186,6 +185,18 @@ function inferCtrlInfoFromInstance(instanceId: string): {
     return { type: 'device', name: savedDevice?.adbDeviceName };
   } else if (controller.type === 'WlRoots') {
     return { type: 'device', name: savedDevice?.wlrSocketPath };
+  } else if (controller.type === 'Linux') {
+    // 按当前配置实际需要的设备派生名称：不依赖 gamescope 的配置（如 Portal+Uinput）
+    // 会忽略残留的 savedDevice.gamescopeDisplayNo，避免显示过期的 `gamescope-<n>`。
+    const name = getLinuxDeviceName(
+      controller,
+      {
+        wlrSocketPath: savedDevice?.wlrSocketPath,
+        gamescopeDisplayNo: savedDevice?.gamescopeDisplayNo,
+      },
+      labels,
+    );
+    return { type: 'device', name };
   } else if (controller.type === 'PlayCover') {
     return { type: 'device', name: savedDevice?.playcoverAddress };
   }
@@ -382,7 +393,10 @@ function handleCallback(
           details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
         const registeredType =
           details.ctrl_id !== undefined ? getCtrlType(details.ctrl_id) : undefined;
-        const inferred = inferCtrlInfoFromInstance(instanceId);
+        const inferred = inferCtrlInfoFromInstance(instanceId, {
+          portal: t('controller.portal'),
+          linux: t('controller.linux'),
+        });
         const deviceName = registeredName || inferred.name || '';
         const ctrlType = registeredType || inferred.type;
         const targetText =
@@ -400,7 +414,10 @@ function handleCallback(
           details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
         const registeredType =
           details.ctrl_id !== undefined ? getCtrlType(details.ctrl_id) : undefined;
-        const inferred = inferCtrlInfoFromInstance(instanceId);
+        const inferred = inferCtrlInfoFromInstance(instanceId, {
+          portal: t('controller.portal'),
+          linux: t('controller.linux'),
+        });
         const deviceName = registeredName || inferred.name || '';
         const ctrlType = registeredType || inferred.type;
         const targetText =
@@ -418,7 +435,10 @@ function handleCallback(
           details.ctrl_id !== undefined ? getCtrlName(details.ctrl_id) : undefined;
         const registeredType =
           details.ctrl_id !== undefined ? getCtrlType(details.ctrl_id) : undefined;
-        const inferred = inferCtrlInfoFromInstance(instanceId);
+        const inferred = inferCtrlInfoFromInstance(instanceId, {
+          portal: t('controller.portal'),
+          linux: t('controller.linux'),
+        });
         const deviceName = registeredName || inferred.name || '';
         const ctrlType = registeredType || inferred.type;
         const targetText =

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   ArrowLeft,
   Paintbrush,
-  Key,
+  Keyboard,
   Settings2,
   Download,
   Bug,
@@ -12,6 +12,7 @@ import {
   X,
   LayoutGrid,
   ChevronRight,
+  Globe,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -31,6 +32,7 @@ import {
   DebugSection,
   AboutSection,
   CustomAccentModal,
+  WebServerSection,
 } from './settings';
 
 interface SettingsPageProps {
@@ -155,6 +157,8 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     confirmBeforeDelete,
     interfaceTranslations,
     language,
+    settingsTargetSection,
+    setSettingsTargetSection,
   } = useAppStore();
 
   // 自定义强调色编辑状态
@@ -264,7 +268,8 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
       items.push({ id: 'task-settings', icon: LayoutGrid, labelKey: 'settings.taskSettings' });
     }
     items.push({ id: 'general', icon: Settings2, labelKey: 'settings.general' });
-    items.push({ id: 'hotkeys', icon: Key, labelKey: 'settings.hotkeys' });
+    items.push({ id: 'hotkeys', icon: Keyboard, labelKey: 'settings.hotkeys' });
+    items.push({ id: 'webserver', icon: Globe, labelKey: 'webserver.title' });
     if (projectInterface?.mirrorchyan_rid || projectInterface?.github) {
       items.push({ id: 'update', icon: Download, labelKey: 'mirrorChyan.title' });
     }
@@ -298,6 +303,21 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
     }
     setDrawerOpen(false);
   }, []);
+
+  // 由外部（如更新气泡里的加速下载入口）指定的目标分区，进入设置页后自动滚过去
+  useEffect(() => {
+    if (!settingsTargetSection) return;
+
+    const target = settingsTargetSection;
+    setActiveSection(target);
+    // 等一帧让页面切换后的布局稳定，否则 offsetTop 可能还没到位。
+    // 清空必须放在回调里：若提前清空，依赖变化会让 cleanup 在这一帧结束前取消掉 rAF。
+    const raf = requestAnimationFrame(() => {
+      scrollToSection(target);
+      setSettingsTargetSection(null);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [settingsTargetSection, setSettingsTargetSection, scrollToSection]);
 
   // 监听滚动，更新当前高亮的 section
   useEffect(() => {
@@ -395,7 +415,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
             {/* 滑入面板 */}
             <nav
               className={clsx(
-                'absolute left-0 top-0 bottom-0 z-50 w-48 bg-bg-secondary border-r border-border p-4 space-y-1',
+                'mxu-overlay-surface absolute left-0 top-0 bottom-0 z-50 w-48 bg-bg-secondary border-r border-border p-4 space-y-1',
                 'transform transition-transform duration-200 ease-out',
                 drawerOpen ? 'translate-x-0' : '-translate-x-full',
               )}
@@ -473,6 +493,9 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
             {/* 快捷键设置 */}
             <HotkeySection />
 
+            {/* Web 服务设置 */}
+            <WebServerSection />
+
             {/* MirrorChyan 更新设置 */}
             <UpdateSection />
 
@@ -511,7 +534,7 @@ export function SettingsPage({ onClose }: SettingsPageProps) {
       {/* Undo 删除提示 */}
       {undoDeletedAccent && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50">
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-bg-secondary shadow-2xl">
+          <div className="mxu-overlay-surface flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-bg-secondary shadow-2xl">
             <span className="text-sm text-text-secondary">
               {t('settings.customAccentDeleted', { name: undoDeletedAccent.name })}
             </span>

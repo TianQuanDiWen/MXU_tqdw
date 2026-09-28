@@ -115,15 +115,15 @@ export default {
     confirmBeforeDelete: '删除操作需要二次确认',
     confirmBeforeDeleteHint: '删除任务、清空列表等危险操作会先弹出确认对话框',
     helpImproveSoftware: '帮助改进软件',
-    helpImproveSoftwareHint: '匿名发送崩溃与任务统计，帮助发现常见问题',
+    helpImproveSoftwareHint:
+      '匿名发送崩溃、任务统计及失败任务的相关日志与错误截图，帮助发现常见问题',
     helpImproveSoftwareDisabledHint: '当前为调试 / 开发版本，已禁用匿名数据上报',
     maxLogsPerInstance: '每个实例保留的日志上限',
     maxLogsPerInstanceHint: '超过上限会自动丢弃最旧的日志（建议 500～2000）',
     resetWindowLayout: '重置窗口布局',
     resetWindowLayoutHint: '将窗口大小恢复为默认值，并居中显示',
     autoClearLogsOnLaunch: '自动清理运行日志',
-    autoClearLogsOnLaunchHint:
-      '每次启动项目时，自动清理运行日志，并删除旧的日志文件与 on_error、vision 目录下的调试截图',
+    autoClearLogsOnLaunchHint: '每次启动项目时，自动清理运行日志与调试文件',
   },
 
   // 特殊任务
@@ -193,6 +193,8 @@ export default {
       restart: '重启',
       screenoff: '息屏',
       sleep: '睡眠',
+      mute: '静音',
+      unmute: '解除静音',
     },
   },
 
@@ -214,6 +216,12 @@ export default {
     taskSkippedController: '任务 "{{taskName}}" 不支持当前控制器',
     taskSkippedResource: '任务 "{{taskName}}" 不支持当前资源',
     noCompatibleTasks: '没有兼容当前控制器和资源的任务',
+    checkboxTaskScope: '任务「{{task}}」',
+    checkboxGlobalScope: '全局设置',
+    checkboxMinimumNotMet:
+      '{{scope}}的选项「{{option}}」至少需要选择 {{min}} 项，当前选择了 {{count}} 项',
+    checkboxMaximumExceeded:
+      '{{scope}}的选项「{{option}}」最多只能选择 {{max}} 项，当前选择了 {{count}} 项',
     // 自动连接相关
     autoConnect: {
       searching: '搜索设备...',
@@ -234,6 +242,9 @@ export default {
         '尚未手动选择过窗口，已自动匹配到「{{name}}」。如需更换，请在连接设置中手动选择，下次将记住您的选择。',
       resourceFailed: '资源加载失败',
       startFailed: '任务启动失败',
+      alreadyRunning: '任务已在运行或正在执行前置动作',
+      taskNotFound: '指定的任务不存在或已被删除',
+      noRunnableTasks: '没有可执行的任务，请检查任务定义和入口配置',
       workstationLocked: '检测到电脑处于锁屏状态，请先解锁后再运行任务',
       agentStartParams: 'Agent #{{index}} 启动参数: {{cmd}}  (工作目录: {{cwd}})',
       agentSpawnHintFileNotFound: '请先检查 Agent 是否被杀软拦截，确认无误后重新覆盖安装。',
@@ -256,6 +267,7 @@ export default {
     removeConfirmMessage: '确定要删除这个任务吗？',
     rename: '重命名',
     clickToToggle: '单击选中/取消',
+    runOnceHint: '单次运行：下次启动时执行一次',
     renameTask: '重命名任务',
     customName: '自定义名称',
     originalName: '原始名称',
@@ -347,6 +359,12 @@ export default {
     hotkeyCapturing: '按下快捷键...',
     expandOptions: '展开子选项',
     collapseOptions: '收起子选项',
+    checkboxCountRange: '至少 {{min}} 项，最多 {{max}} 项',
+    checkboxCountMinimum: '至少 {{min}} 项',
+    checkboxCountMaximum: '最多 {{max}} 项',
+    checkboxSelectedCount: '已选择 {{count}} 项（{{constraint}}）',
+    checkboxMinimumRequired: '至少选择 {{min}} 项（当前 {{count}} 项）',
+    checkboxMaximumReached: '最多只能选择 {{max}} 项',
   },
 
   // 预设配置
@@ -377,6 +395,10 @@ export default {
     adb: 'Android 设备',
     win32: 'Windows 窗口',
     wlroots: 'WlRoots (Linux)',
+    linux: 'Linux',
+    portal: 'Portal',
+    uinputWidth: '宽 (px)',
+    uinputHeight: '高 (px)',
     playcover: 'PlayCover (macOS)',
     macos: 'macOS 窗口',
     macosPermissionsRequired:
@@ -385,6 +407,7 @@ export default {
     macosVersionRequired: 'macOS 原生窗口控制器需要 MaaFramework v5.10.0-beta.1 或更高版本。',
     macosSystemVersionRequired: 'macOS 原生窗口控制器需要 macOS 14.0 或更高版本。',
     macosSystemVersionDetectionFailed: '无法识别当前 macOS 系统版本，请查看日志了解详情。',
+    linuxVersionRequired: 'Linux 控制器需要 MaaFramework v5.13.0-beta.3 或更高版本。',
     gamepad: '游戏手柄',
     connecting: '连接中...',
     connected: '已连接',
@@ -483,7 +506,6 @@ export default {
       stopTask: '停止任务',
       // 定时任务消息
       scheduleStarting: '定时执行开始 [{{policy}}] {{time}}',
-      scheduleCompensating: '定时补偿执行 [{{policy}}] {{time}}（睡眠/恢复后补触发）',
       // Agent 消息
       agentStarting: 'Agent 正在启动...',
       agentStarted: 'Agent 已启动',
@@ -498,8 +520,8 @@ export default {
       hotkeyActionStart: '开始任务',
       hotkeyActionStop: '停止任务',
       hotkeyStartSuccess: '已通过快捷键开始任务：',
-      hotkeyStartFailed: '未能通过快捷键开始任务',
       hotkeyStopSuccess: '已通过快捷键停止任务',
+      hotkeyStopPending: '停止请求已发送，但任务仍在等待当前操作退出。',
       hotkeyStopFailed: '未能通过快捷键停止任务',
     },
   },
@@ -562,16 +584,20 @@ export default {
     saveDrawHint: '保存识别和操作的调试图像到日志目录（重启软件后自动关闭）',
     tcpCompatMode: '通信兼容模式',
     tcpCompatModeHint: '若启动任务后软件立即闪退，可尝试开启。仅限此情况使用，否则会影响运行效率',
-    webServerEnabled: '启用 Web 服务',
-    webServerEnabledHint: '关闭后内置 Web 服务器将不会启动（重启生效）',
-    webServerPort: 'Web 服务端口',
-    webServerPortHint: '自定义 Web 服务器监听端口（默认 12701，重启生效）',
+  },
+
+  webserver: {
+    address: 'Web 服务地址',
+    title: 'Web 服务',
+    enabled: '启用 Web 服务',
+    enabledHint: '关闭后内置 Web 服务器将不会启动（重启生效）',
+    port: 'Web 服务端口',
+    portHint: '自定义 Web 服务器监听端口（默认 12701，重启生效）',
     allowLanAccess: '允许局域网访问',
     allowLanAccessHint: '启用后 Web UI 将监听 0.0.0.0，允许局域网内其他设备访问',
-    webServerRestartMessage: '更改 Web 服务设置需要重启才能生效，是否立即重启？',
+    restartMessage: '更改 Web 服务设置需要重启才能生效，是否立即重启？',
     restartLater: '稍后重启',
     restartNow: '立即重启',
-    webServerAddress: 'Web 服务地址',
   },
 
   // 配置自愈提示
@@ -660,6 +686,7 @@ export default {
       ' 是独立的第三方加速下载服务，需要付费使用，并非「{{projectName}}」收费。其运营成本由订阅收入支撑，部分收益将回馈项目开发者。欢迎订阅 CDK 享受高速下载，同时支持项目持续开发。未填写 CDK 时将自动通过 GitHub 下载，若失败请尝试配置网络代理。',
     getCdk: '没有CDK？立即订阅',
     cdkHint: '请检查您的 CDK 是否正确或已过期',
+    slowDownloadHint: '其他渠道',
     checkUpdate: '检查更新',
     checking: '正在检查...',
     upToDate: '当前已是最新版本 ({{version}})',
@@ -828,6 +855,10 @@ export default {
     deselectAll: '取消全选',
     expandAllTasks: '展开全部',
     collapseAllTasks: '折叠全部',
+    runFromHere: '从此处运行',
+    runSingleTask: '单独运行',
+    runOnceTask: '单次运行',
+    clearRunOnceTask: '取消单次运行',
 
     // 截图面板右键菜单
     reconnect: '重新连接',
