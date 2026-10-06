@@ -322,11 +322,6 @@ export function UpdateSection() {
       return;
     }
 
-    if (import.meta.env.DEV) {
-      addDebugLog('MXU 开发模式，跳过检查更新');
-      return;
-    }
-
     setCheckFailed(false);
     setUpdateCheckLoading(true);
     addDebugLog(`开始检查更新... (频道: ${mirrorChyanSettings.channel})`);
@@ -384,275 +379,272 @@ export function UpdateSection() {
 
       <div className="bg-bg-secondary rounded-xl p-4 border border-border space-y-5">
         {/* 调试模式提示 */}
-        {isDebugMode ? (
-          <div className="flex items-center gap-3 py-2 text-text-muted">
-            <Bug className="w-5 h-5 text-warning" />
+        {isDebugMode && (
+          <div className="flex items-center gap-3 py-2 px-3 rounded-lg bg-bg-tertiary text-text-muted">
+            <Bug className="w-5 h-5 text-warning shrink-0" />
             <span className="text-sm">{t('mirrorChyan.debugModeNotice')}</span>
           </div>
-        ) : (
-          <>
-            {/* 更新频道 */}
-            <div className={clsx(!projectInterface.mirrorchyan_rid && 'hidden')}>
-              <div className="flex items-center gap-3 mb-3">
-                <Download className="w-5 h-5 text-accent" />
-                <span className="font-medium text-text-primary">{t('mirrorChyan.channel')}</span>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setMirrorChyanChannel('stable')}
-                  className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    mirrorChyanSettings.channel === 'stable'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
-                  )}
-                >
-                  {t('mirrorChyan.channelStable')}
-                </button>
-                <button
-                  onClick={() => setMirrorChyanChannel('beta')}
-                  className={clsx(
-                    'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    mirrorChyanSettings.channel === 'beta'
-                      ? 'bg-accent text-white'
-                      : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
-                  )}
-                >
-                  {t('mirrorChyan.channelBeta')}
-                </button>
-              </div>
-            </div>
-
-            {/* CDK 输入 */}
-            <div
+        )}
+        {/* 更新频道 */}
+        <div className={clsx(!projectInterface.mirrorchyan_rid && 'hidden')}>
+          <div className="flex items-center gap-3 mb-3">
+            <Download className="w-5 h-5 text-accent" />
+            <span className="font-medium text-text-primary">{t('mirrorChyan.channel')}</span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setMirrorChyanChannel('stable')}
               className={clsx(
-                'pt-4 border-t border-border',
-                !projectInterface.mirrorchyan_rid && 'hidden',
+                'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                mirrorChyanSettings.channel === 'stable'
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
               )}
             >
-              <div className="flex items-center gap-3 mb-3">
-                <Key className="w-5 h-5 text-accent" />
-                <span className="font-medium text-text-primary">{t('mirrorChyan.cdk')}</span>
-                <button
-                  onClick={() => openMirrorChyanWebsite('mxu_settings')}
-                  className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
-                >
-                  {t('mirrorChyan.getCdk')}
-                  <ExternalLink className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="relative">
-                <input
-                  ref={cdkInputRef}
-                  type={showCdk ? 'text' : 'password'}
-                  value={mirrorChyanSettings.cdk}
-                  onChange={(e) => handleCdkChange(e.target.value)}
-                  placeholder={t('mirrorChyan.cdkPlaceholder')}
-                  className="w-full px-3 py-2.5 pr-10 rounded-lg bg-bg-tertiary border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
-                />
-                <button
-                  onClick={() => setShowCdk(!showCdk)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text-secondary transition-colors"
-                >
-                  {showCdk ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-              <div className="mt-3 text-xs text-text-muted leading-relaxed">
-                <p>
-                  <button
-                    onClick={() => openMirrorChyanWebsite('mxu_settings_hint')}
-                    className="text-accent hover:underline"
-                  >
-                    {t('mirrorChyan.serviceName')}
-                  </button>
-                  {t('mirrorChyan.cdkHintAfterLink', { projectName })}
-                </p>
+              {t('mirrorChyan.channelStable')}
+            </button>
+            <button
+              onClick={() => setMirrorChyanChannel('beta')}
+              className={clsx(
+                'flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                mirrorChyanSettings.channel === 'beta'
+                  ? 'bg-accent text-white'
+                  : 'bg-bg-tertiary text-text-secondary hover:bg-bg-hover',
+              )}
+            >
+              {t('mirrorChyan.channelBeta')}
+            </button>
+          </div>
+        </div>
+
+        {/* CDK 输入 */}
+        <div
+          className={clsx(
+            'pt-4 border-t border-border',
+            !projectInterface.mirrorchyan_rid && 'hidden',
+          )}
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <Key className="w-5 h-5 text-accent" />
+            <span className="font-medium text-text-primary">{t('mirrorChyan.cdk')}</span>
+            <button
+              onClick={() => openMirrorChyanWebsite('mxu_settings')}
+              className="ml-auto text-xs text-accent hover:underline flex items-center gap-1"
+            >
+              {t('mirrorChyan.getCdk')}
+              <ExternalLink className="w-3 h-3" />
+            </button>
+          </div>
+          <div className="relative">
+            <input
+              ref={cdkInputRef}
+              type={showCdk ? 'text' : 'password'}
+              value={mirrorChyanSettings.cdk}
+              onChange={(e) => handleCdkChange(e.target.value)}
+              placeholder={t('mirrorChyan.cdkPlaceholder')}
+              className="w-full px-3 py-2.5 pr-10 rounded-lg bg-bg-tertiary border border-border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50"
+            />
+            <button
+              onClick={() => setShowCdk(!showCdk)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-text-muted hover:text-text-secondary transition-colors"
+            >
+              {showCdk ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+          <div className="mt-3 text-xs text-text-muted leading-relaxed">
+            <p>
+              <button
+                onClick={() => openMirrorChyanWebsite('mxu_settings_hint')}
+                className="text-accent hover:underline"
+              >
+                {t('mirrorChyan.serviceName')}
+              </button>
+              {t('mirrorChyan.cdkHintAfterLink', { projectName })}
+            </p>
+          </div>
+        </div>
+
+        {/* 代理设置 */}
+        {!isProxyDisabled && (
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center gap-3 mb-3">
+              <Network className="w-5 h-5 text-accent" />
+              <span className="font-medium text-text-primary">{t('proxy.title')}</span>
+            </div>
+            <div className="relative">
+              <input
+                type="text"
+                value={proxyInput}
+                onChange={(e) => {
+                  setProxyInput(e.target.value);
+                  setProxyError(false);
+                }}
+                onBlur={handleProxyBlur}
+                placeholder={t('proxy.urlPlaceholder')}
+                className={clsx(
+                  'w-full px-3 py-2.5 rounded-lg bg-bg-tertiary border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50',
+                  proxyError ? 'border-error' : 'border-border',
+                )}
+              />
+            </div>
+            {proxyError && (
+              <p className="mt-2 text-xs text-error flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                {t('proxy.invalid')}
+              </p>
+            )}
+            <div className="mt-3 text-xs text-text-muted leading-relaxed space-y-1">
+              <p>{t('proxy.urlHint')}</p>
+            </div>
+          </div>
+        )}
+
+        {/* 检查更新按钮 */}
+        <div className="pt-4 border-t border-border space-y-4">
+          {downloadStatus === 'downloading' ? (
+            <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-bg-tertiary text-text-muted">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {t('mirrorChyan.downloading')}
+            </div>
+          ) : downloadStatus === 'completed' && installStatus === 'idle' ? (
+            <button
+              onClick={handleInstallNow}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
+            >
+              <PackageCheck className="w-4 h-4" />
+              {t('mirrorChyan.installNow')}
+            </button>
+          ) : (
+            <button
+              onClick={handleCheckUpdate}
+              disabled={updateCheckLoading}
+              className={clsx(
+                'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                updateCheckLoading
+                  ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
+                  : 'bg-accent text-white hover:bg-accent-hover',
+              )}
+            >
+              {updateCheckLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {t('mirrorChyan.checking')}
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4" />
+                  {t('mirrorChyan.checkUpdate')}
+                </>
+              )}
+            </button>
+          )}
+
+          {/* 更新状态显示 */}
+          {updateInfo && !updateInfo.hasUpdate && !updateInfo.errorCode && (
+            <p className="text-xs text-center text-text-muted">
+              {t('mirrorChyan.upToDate', { version: updateInfo.versionName })}
+            </p>
+          )}
+
+          {/* 网络异常导致检查失败 */}
+          {checkFailed && !updateCheckLoading && (
+            <div className="flex items-start gap-2 p-3 rounded-lg text-sm bg-error/10 text-error border border-error/30">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p>{t('mirrorChyan.checkFailed')}</p>
+                <p className="text-xs opacity-80">{t('mirrorChyan.checkFailedHint')}</p>
               </div>
             </div>
+          )}
 
-            {/* 代理设置 */}
-            {!isProxyDisabled && (
-              <div className="pt-4 border-t border-border">
-                <div className="flex items-center gap-3 mb-3">
-                  <Network className="w-5 h-5 text-accent" />
-                  <span className="font-medium text-text-primary">{t('proxy.title')}</span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={proxyInput}
-                    onChange={(e) => {
-                      setProxyInput(e.target.value);
-                      setProxyError(false);
-                    }}
-                    onBlur={handleProxyBlur}
-                    placeholder={t('proxy.urlPlaceholder')}
-                    className={clsx(
-                      'w-full px-3 py-2.5 rounded-lg bg-bg-tertiary border text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-accent/50',
-                      proxyError ? 'border-error' : 'border-border',
-                    )}
-                  />
-                </div>
-                {proxyError && (
-                  <p className="mt-2 text-xs text-error flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    {t('proxy.invalid')}
-                  </p>
+          {/* 有更新时显示更新内容和下载进度 */}
+          {updateInfo?.hasUpdate && (
+            <div className="space-y-4 p-4 bg-bg-tertiary rounded-lg border border-border">
+              {/* 新版本标题 */}
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-accent" />
+                <span className="text-sm font-medium text-text-primary">
+                  {t('mirrorChyan.newVersion')}
+                </span>
+                <span className="font-mono text-sm text-accent font-semibold">
+                  {updateInfo.versionName}
+                </span>
+                {updateInfo.channel && updateInfo.channel !== 'stable' && (
+                  <span className="px-1.5 py-0.5 bg-warning/20 text-warning text-xs rounded font-medium">
+                    {updateInfo.channel}
+                  </span>
                 )}
-                <div className="mt-3 text-xs text-text-muted leading-relaxed space-y-1">
-                  <p>{t('proxy.urlHint')}</p>
-                </div>
               </div>
-            )}
 
-            {/* 检查更新按钮 */}
-            <div className="pt-4 border-t border-border space-y-4">
-              {downloadStatus === 'downloading' ? (
-                <div className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-bg-tertiary text-text-muted">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  {t('mirrorChyan.downloading')}
-                </div>
-              ) : downloadStatus === 'completed' && installStatus === 'idle' ? (
-                <button
-                  onClick={handleInstallNow}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium bg-accent text-white hover:bg-accent-hover transition-colors"
-                >
-                  <PackageCheck className="w-4 h-4" />
-                  {t('mirrorChyan.installNow')}
-                </button>
-              ) : (
-                <button
-                  onClick={handleCheckUpdate}
-                  disabled={updateCheckLoading}
-                  className={clsx(
-                    'w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                    updateCheckLoading
-                      ? 'bg-bg-tertiary text-text-muted cursor-not-allowed'
-                      : 'bg-accent text-white hover:bg-accent-hover',
-                  )}
-                >
-                  {updateCheckLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      {t('mirrorChyan.checking')}
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4" />
-                      {t('mirrorChyan.checkUpdate')}
-                    </>
-                  )}
-                </button>
+              {/* 更新日志 */}
+              {updateInfo.releaseNote && (
+                <ReleaseNotes
+                  releaseNote={updateInfo.releaseNote}
+                  collapsibleTitle
+                  maxHeightClass="max-h-32"
+                  bgClass="bg-bg-secondary"
+                  textSizeClass="text-xs"
+                />
               )}
 
-              {/* 更新状态显示 */}
-              {updateInfo && !updateInfo.hasUpdate && !updateInfo.errorCode && (
-                <p className="text-xs text-center text-text-muted">
-                  {t('mirrorChyan.upToDate', { version: updateInfo.versionName })}
-                </p>
-              )}
-
-              {/* 网络异常导致检查失败 */}
-              {checkFailed && !updateCheckLoading && (
-                <div className="flex items-start gap-2 p-3 rounded-lg text-sm bg-error/10 text-error border border-error/30">
-                  <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <p>{t('mirrorChyan.checkFailed')}</p>
-                    <p className="text-xs opacity-80">{t('mirrorChyan.checkFailedHint')}</p>
-                  </div>
-                </div>
-              )}
-
-              {/* 有更新时显示更新内容和下载进度 */}
-              {updateInfo?.hasUpdate && (
-                <div className="space-y-4 p-4 bg-bg-tertiary rounded-lg border border-border">
-                  {/* 新版本标题 */}
-                  <div className="flex items-center gap-2">
-                    <Download className="w-4 h-4 text-accent" />
-                    <span className="text-sm font-medium text-text-primary">
-                      {t('mirrorChyan.newVersion')}
-                    </span>
-                    <span className="font-mono text-sm text-accent font-semibold">
-                      {updateInfo.versionName}
-                    </span>
-                    {updateInfo.channel && updateInfo.channel !== 'stable' && (
-                      <span className="px-1.5 py-0.5 bg-warning/20 text-warning text-xs rounded font-medium">
-                        {updateInfo.channel}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* 更新日志 */}
-                  {updateInfo.releaseNote && (
-                    <ReleaseNotes
-                      releaseNote={updateInfo.releaseNote}
-                      collapsibleTitle
-                      maxHeightClass="max-h-32"
-                      bgClass="bg-bg-secondary"
-                      textSizeClass="text-xs"
-                    />
-                  )}
-
-                  {/* API 错误提示 */}
-                  {updateInfo.errorCode && errorText && (
-                    <div
-                      className={clsx(
-                        'flex items-start gap-2 p-2 rounded-lg text-xs',
-                        isCdkError ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error',
-                      )}
-                    >
-                      <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                      <span>{errorText}</span>
-                    </div>
-                  )}
-
-                  {/* 没有下载链接的提示 */}
-                  {!updateInfo.downloadUrl && !updateInfo.errorCode && (
-                    <div className="flex items-center gap-2 text-xs text-text-muted">
-                      <AlertCircle className="w-3.5 h-3.5 text-warning" />
-                      <span>{t('mirrorChyan.noDownloadUrl')}</span>
-                    </div>
-                  )}
-
-                  {/* 下载进度 */}
-                  {updateInfo.downloadUrl && downloadStatus !== 'idle' && (
-                    <DownloadProgressBar
-                      downloadStatus={downloadStatus}
-                      downloadProgress={downloadProgress}
-                      fileSize={updateInfo.fileSize}
-                      downloadSource={updateInfo.downloadSource}
-                      onInstallClick={handleInstallNow}
-                      onRetryClick={() => {
-                        resetDownloadState();
-                        startDownload();
-                      }}
-                      progressBgClass="bg-bg-secondary"
-                      onSlowDownloadHintClick={handleScrollToCdkInput}
-                    />
-                  )}
-                </div>
-              )}
-
-              {/* 只有错误没有更新时显示错误 */}
-              {updateInfo && !updateInfo.hasUpdate && updateInfo.errorCode && errorText && (
+              {/* API 错误提示 */}
+              {updateInfo.errorCode && errorText && (
                 <div
                   className={clsx(
-                    'flex items-start gap-2 p-3 rounded-lg text-sm',
-                    isCdkError
-                      ? 'bg-warning/10 text-warning border border-warning/30'
-                      : 'bg-error/10 text-error border border-error/30',
+                    'flex items-start gap-2 p-2 rounded-lg text-xs',
+                    isCdkError ? 'bg-warning/10 text-warning' : 'bg-error/10 text-error',
                   )}
                 >
-                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div className="space-y-1">
-                    <p>{errorText}</p>
-                    {isCdkError && <p className="text-xs opacity-80">{t('mirrorChyan.cdkHint')}</p>}
-                  </div>
+                  <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>{errorText}</span>
                 </div>
               )}
+
+              {/* 没有下载链接的提示 */}
+              {!updateInfo.downloadUrl && !updateInfo.errorCode && (
+                <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <AlertCircle className="w-3.5 h-3.5 text-warning" />
+                  <span>{t('mirrorChyan.noDownloadUrl')}</span>
+                </div>
+              )}
+
+              {/* 下载进度 */}
+              {updateInfo.downloadUrl && downloadStatus !== 'idle' && (
+                <DownloadProgressBar
+                  downloadStatus={downloadStatus}
+                  downloadProgress={downloadProgress}
+                  fileSize={updateInfo.fileSize}
+                  downloadSource={updateInfo.downloadSource}
+                  onInstallClick={handleInstallNow}
+                  onRetryClick={() => {
+                    resetDownloadState();
+                    startDownload();
+                  }}
+                  progressBgClass="bg-bg-secondary"
+                  onSlowDownloadHintClick={handleScrollToCdkInput}
+                />
+              )}
             </div>
-          </>
-        )}
+          )}
+
+          {/* 只有错误没有更新时显示错误 */}
+          {updateInfo && !updateInfo.hasUpdate && updateInfo.errorCode && errorText && (
+            <div
+              className={clsx(
+                'flex items-start gap-2 p-3 rounded-lg text-sm',
+                isCdkError
+                  ? 'bg-warning/10 text-warning border border-warning/30'
+                  : 'bg-error/10 text-error border border-error/30',
+              )}
+            >
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+              <div className="space-y-1">
+                <p>{errorText}</p>
+                {isCdkError && <p className="text-xs opacity-80">{t('mirrorChyan.cdkHint')}</p>}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

@@ -75,8 +75,8 @@ pub async fn get_github_release_by_version(
     // 构造请求头
     let mut client_builder = reqwest::Client::builder()
         .user_agent("mxu")
-        .timeout(std::time::Duration::from_secs(10))
-        .connect_timeout(std::time::Duration::from_secs(3));
+        .timeout(std::time::Duration::from_secs(15))
+        .connect_timeout(std::time::Duration::from_secs(8));
 
     // 添加代理配置（如果提供）
     if let Some(ref proxy) = proxy_url {
