@@ -13,6 +13,7 @@ import type {
 } from './types';
 import { createLogger } from '@/utils/logger';
 import { resolveLanguagePreference, type LanguagePreference } from '@/i18n';
+import { normalizeHex, adjustHex } from '@/utils/color';
 
 const logger = createLogger('Theme');
 
@@ -119,16 +120,18 @@ function applyCSSVariables(mode: ModeTheme, accent: AccentTheme, isDark: boolean
  * @param accent 强调色名称
  */
 export function applyTheme(mode: ThemeMode, accent: AccentColor): void {
-  const modeTheme = modeThemes[mode];
-  const accentTheme = customAccentThemes[accent] || accentThemes[accent];
+  const modeTheme = modeThemes[mode] || modeThemes.light;
+  let resolvedAccent = accent;
+  let accentTheme = customAccentThemes[accent] || accentThemes[accent];
 
-  if (!modeTheme || !accentTheme) {
-    logger.warn(`Theme not found: mode=${mode}, accent=${accent}`);
-    return;
+  if (!accentTheme) {
+    logger.warn(`Accent theme not found: ${accent}, falling back to emerald`);
+    resolvedAccent = 'emerald';
+    accentTheme = accentThemes.emerald;
   }
 
   currentMode = mode;
-  currentAccent = accent;
+  currentAccent = resolvedAccent;
 
   // 切换 dark class
   document.documentElement.classList.toggle('dark', mode === 'dark');
@@ -177,8 +180,11 @@ export function getAccentInfoList(lang: string, customAccents?: CustomAccent[]):
   const langKey = resolvedLang as keyof AccentTheme['label'];
   const base = Object.keys(accentThemes) as AccentColor[];
   const customOrdered = (customAccents ?? []).map((a) => a.name as AccentColor);
+  const extraCustom = (Object.keys(customAccentThemes) as AccentColor[]).filter(
+    (name) => !customOrdered.includes(name),
+  );
   const seen = new Set<string>();
-  const all = [...base, ...customOrdered].filter((name) => {
+  const all = [...base, ...customOrdered, ...extraCustom].filter((name) => {
     if (seen.has(String(name))) return false;
     seen.add(String(name));
     // only include if exists (custom accents can be empty during boot)
@@ -200,7 +206,7 @@ export function getAccentInfoList(lang: string, customAccents?: CustomAccent[]):
       };
     }
 
-    const isCustom = !!customAccentThemes[name as string];
+    const isCustom = (customAccents ?? []).some((a) => a.name === name);
 
     return {
       name,
@@ -299,4 +305,64 @@ export function clearCustomAccents(): void {
     delete customAccentThemes[name];
   }
   registeredCustomAccentNames.clear();
+}
+
+/** 内置预设强调色名称集合 */
+export const PRESET_ACCENT_NAMES = new Set<string>([
+  'emerald',
+  'lava',
+  'titanium',
+  'celadon',
+  'rosegold',
+  'danxia',
+  'deepsea',
+  'cambrian',
+  'pearl',
+]);
+
+/**
+ * 从 ProjectInterface 中解析项目定制强调色
+ * 优先级判断和应用：
+ * 1. 若匹配预设名（如 'rosegold'），直接返回预设名
+ * 2. 若为有效 Hex（如 '#3b82f6'），动态生成衍生色并注册为 customAccent，返回专属命名的标识名
+ * 3. 否则返回 undefined
+ */
+export function resolveProjectAccent(
+  pi: { theme_color?: string; accent_color?: string } | null | undefined,
+): AccentColor | undefined {
+  if (!pi) return undefined;
+  const rawColor = (pi.theme_color || pi.accent_color)?.trim();
+  if (!rawColor) return undefined;
+
+  const lower = rawColor.toLowerCase();
+  if (PRESET_ACCENT_NAMES.has(lower)) {
+    return lower as AccentColor;
+  }
+
+  const normalized = normalizeHex(rawColor);
+  if (normalized) {
+    const accentName = `project-theme-${normalized.slice(1)}`;
+    const customAccent: CustomAccent = {
+      id: 'project-theme',
+      name: accentName,
+      label: {
+        'zh-CN': '项目定制',
+        'zh-TW': '專案自訂',
+        'en-US': 'Project Custom',
+        'ja-JP': 'プロジェクトカスタム',
+        'ko-KR': '프로젝트 커스텀',
+      },
+      colors: {
+        default: normalized,
+        hover: adjustHex(normalized, 0.9),
+        light: adjustHex(normalized, 1.2),
+        lightDark: adjustHex(normalized, 0.7),
+      },
+    };
+    registerCustomAccent(customAccent);
+    return accentName;
+  }
+
+  logger.warn(`未知的项目定制颜色格式: ${rawColor}`);
+  return undefined;
 }

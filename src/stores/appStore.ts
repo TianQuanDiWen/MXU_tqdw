@@ -7,7 +7,9 @@ import {
   applyTheme,
   clearCustomAccents,
   type CustomAccent,
+  PRESET_ACCENT_NAMES,
   registerCustomAccent,
+  resolveProjectAccent,
   resolveThemeMode,
   unregisterCustomAccent,
 } from '@/themes';
@@ -20,6 +22,7 @@ import type {
 import {
   clampAddTaskPanelHeight,
   DEFAULT_MAX_LOGS_PER_INSTANCE,
+  defaultAccentColor,
   defaultAddTaskPanelHeight,
   defaultMirrorChyanSettings,
   defaultScreenshotFrameRate,
@@ -230,6 +233,7 @@ export const useAppStore = create<AppState>()(
     // 主题和语言
     theme: 'light',
     accentColor: 'emerald',
+    userAccentColor: undefined,
     language: 'system',
     backgroundImage: undefined,
     backgroundOpacity: 50,
@@ -245,11 +249,15 @@ export const useAppStore = create<AppState>()(
       if (!isTauri()) patchWebUIAppearance({ theme });
     },
     setAccentColor: (accent) => {
-      set({ accentColor: accent });
+      const projectAccent = resolveProjectAccent(get().projectInterface);
+      // 若用户主动选中的是当前项目定制色，表示“跟随项目定制”（不锁死），设为 undefined；
+      // 若选中的是其他预设或自定义色，记录为用户的主动锁定偏好。
+      const userAccent = accent === projectAccent ? undefined : accent;
+      set({ accentColor: accent, userAccentColor: userAccent });
       const { theme } = get();
       const mode = resolveThemeMode(theme);
       applyTheme(mode, accent);
-      if (!isTauri()) patchWebUIAppearance({ accentColor: accent });
+      if (!isTauri()) patchWebUIAppearance({ accentColor: userAccent });
     },
     setLanguage: (lang) => {
       set({ language: lang });
@@ -320,11 +328,12 @@ export const useAppStore = create<AppState>()(
         }));
         const { theme, accentColor } = get();
         if (accentColor === accent.name) {
-          const defaultAccent: AccentColor = 'emerald';
-          set({ accentColor: defaultAccent });
+          const projectAccent = resolveProjectAccent(get().projectInterface);
+          const fallbackAccent = projectAccent || defaultAccentColor;
+          set({ accentColor: fallbackAccent, userAccentColor: undefined });
           const mode = resolveThemeMode(theme);
-          applyTheme(mode, defaultAccent);
-          if (!isTauri()) patchWebUIAppearance({ accentColor: defaultAccent });
+          applyTheme(mode, fallbackAccent);
+          if (!isTauri()) patchWebUIAppearance({ accentColor: undefined });
         }
         if (!isTauri()) patchWebUIAppearance({ customAccents: get().customAccents });
       }
@@ -1421,8 +1430,6 @@ export const useAppStore = create<AppState>()(
         }
       });
 
-      const configAccentColor = (config.settings.accentColor as AccentColor) || 'deepsea';
-
       // WebUI 模式下：缓存后端外观 & 布局设置，使用 localStorage 本地值
       const isWebUI = !isTauri();
       if (isWebUI) {
@@ -1430,11 +1437,9 @@ export const useAppStore = create<AppState>()(
         cacheBackendLayout(config.settings);
       }
 
-      // 确定实际使用的外观设置
       const localAppearance = isWebUI ? loadWebUIAppearance() : null;
       const localLayout = isWebUI ? loadWebUILayout() : null;
       const effectiveTheme = localAppearance?.theme ?? config.settings.theme;
-      const effectiveAccentColor = localAppearance?.accentColor ?? configAccentColor;
       const effectiveLanguage = localAppearance?.language ?? config.settings.language;
       const effectiveBgImage = localAppearance
         ? localAppearance.backgroundImage
@@ -1443,11 +1448,36 @@ export const useAppStore = create<AppState>()(
         localAppearance?.backgroundOpacity ?? config.settings.backgroundOpacity ?? 50;
       const effectiveCustomAccents = localAppearance?.customAccents ?? config.customAccents ?? [];
 
-      // 加载自定义强调色
+      // 加载自定义强调色与项目定制色
       clearCustomAccents();
       effectiveCustomAccents.forEach((accent: CustomAccent) => {
         registerCustomAccent(accent);
       });
+      const projectAccent = resolveProjectAccent(pi);
+
+      // 确定实际使用的强调色
+      // 优先级：用户本地有效持久化设置 > interface.json 项目定制色 > 默认兜底色
+      const savedAccent = (localAppearance?.accentColor ?? config.settings?.accentColor) as
+        | AccentColor
+        | undefined;
+
+      // 【存量用户颜色兼容处理】
+      // 在旧版本 MXU 中，默认兜底强调色硬编码为 'emerald'，且系统启动时会自动将其无脑落盘。
+      // 因此，若本地读取到的持久化颜色恰为 'emerald'，说明该存量用户从未在设置中主动修改过强调色；
+      // 此时将该历史默认值视为未锁定偏好，以便存量老用户打开配置了定制色的项目时能直接生效项目定制色。
+      const isLegacyDefaultEmerald = savedAccent === defaultAccentColor;
+
+      const isUserAccentValid =
+        !isLegacyDefaultEmerald &&
+        savedAccent &&
+        (PRESET_ACCENT_NAMES.has(savedAccent) ||
+          effectiveCustomAccents.some((a: CustomAccent) => a.name === savedAccent) ||
+          savedAccent === projectAccent);
+
+      // 用户主动锁定的偏好色（若选中的是项目定制色则不固化，保持 undefined 动态跟随项目更新）
+      const userAccentColor =
+        isUserAccentValid && savedAccent !== projectAccent ? savedAccent : undefined;
+      const effectiveAccentColor = userAccentColor || projectAccent || defaultAccentColor;
 
       // 恢复最后激活的实例
       // ID，如果保存的实例仍存在则使用它，否则回退到第一个实例
@@ -1464,6 +1494,7 @@ export const useAppStore = create<AppState>()(
         activeInstanceId,
         theme: effectiveTheme,
         accentColor: effectiveAccentColor,
+        userAccentColor,
         language: effectiveLanguage,
         backgroundImage: effectiveBgImage,
         backgroundOpacity: effectiveBgOpacity,
@@ -2452,7 +2483,7 @@ function generateConfig(): MxuConfig {
       return {
         settings: {
           theme: ba?.theme ?? state.theme,
-          accentColor: ba?.accentColor ?? state.accentColor,
+          accentColor: ba?.accentColor ?? state.userAccentColor,
           language: ba?.language ?? state.language,
           backgroundImage: ba?.backgroundImage ?? state.backgroundImage,
           backgroundOpacity: ba?.backgroundOpacity ?? state.backgroundOpacity,
@@ -2536,6 +2567,7 @@ useAppStore.subscribe(
     ...(!_isWebUI && {
       theme: state.theme,
       accentColor: state.accentColor,
+      userAccentColor: state.userAccentColor,
       language: state.language,
       customAccents: state.customAccents,
       windowSize: state.windowSize,

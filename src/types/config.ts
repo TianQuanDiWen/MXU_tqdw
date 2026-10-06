@@ -239,7 +239,7 @@ export const defaultConfig: MxuConfig = {
   instances: [],
   settings: {
     theme: 'system',
-    accentColor: defaultAccentColor,
+    accentColor: undefined,
     language: 'system',
     confirmBeforeDelete: false,
     maxLogsPerInstance: DEFAULT_MAX_LOGS_PER_INSTANCE,

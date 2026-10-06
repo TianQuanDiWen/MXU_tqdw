@@ -29,3 +29,21 @@ export function normalizeHex(input: string): string | null {
   if (/^#[0-9a-f]{6}$/.test(v)) return v;
   return null;
 }
+
+/**
+ * 调整十六进制颜色的亮度
+ * @param hexStr 颜色十六进制字符串，如 '#3b82f6' 或 '3b82f6'
+ * @param factor 调整系数，>1 变亮，<1 变暗
+ */
+export function adjustHex(hexStr: string, factor: number): string {
+  const clean = hexStr.replace('#', '');
+  if (clean.length !== 6) return hexStr;
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  const adjust = (c: number) => Math.max(0, Math.min(255, Math.round(c * factor)));
+  const nr = adjust(r);
+  const ng = adjust(g);
+  const nb = adjust(b);
+  return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
+}

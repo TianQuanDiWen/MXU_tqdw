@@ -561,10 +561,8 @@ function App() {
         }
       }
 
-      // 应用配置
-      if (config.instances.length > 0) {
-        importConfig(config);
-      }
+      // 应用配置（包含全局外观设置与实例数据，统一生命周期）
+      importConfig(config);
 
       // 初始化匿名遥测（仅当 interface 声明了 telemetry.sentry.dsn 且非调试 / 开发版本）
       // 即便用户当前关闭，也传入配置以便后端缓存，用户在设置中开启时无需重启

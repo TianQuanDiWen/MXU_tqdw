@@ -8,6 +8,8 @@ export interface ProjectInterface {
   title?: string;
   icon?: string;
   logo?: string;
+  theme_color?: string;
+  accent_color?: string;
   mirrorchyan_rid?: string;
   mirrorchyan_multiplatform?: boolean;
   github?: string;

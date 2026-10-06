@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Palette, X, AlertCircle } from 'lucide-react';
 
 import type { CustomAccent } from '@/themes';
+import { adjustHex } from '@/utils/color';
 import { ColorPickerPopover } from '../ColorPickerPopover';
 import { HexColorTextInput } from '../HexColorTextInput';
 
@@ -36,34 +37,20 @@ export function CustomAccentModal({
     [t],
   );
 
-  // 将十六进制颜色稍微变亮/变暗的辅助函数
-  const adjustColor = useCallback((hex: string, factor: number): string => {
-    const clean = hex.replace('#', '');
-    if (clean.length !== 6) return hex;
-    const r = parseInt(clean.slice(0, 2), 16);
-    const g = parseInt(clean.slice(2, 4), 16);
-    const b = parseInt(clean.slice(4, 6), 16);
-    const adjust = (c: number) => Math.max(0, Math.min(255, Math.round(c * factor)));
-    const nr = adjust(r);
-    const ng = adjust(g);
-    const nb = adjust(b);
-    return `#${nr.toString(16).padStart(2, '0')}${ng.toString(16).padStart(2, '0')}${nb.toString(16).padStart(2, '0')}`;
-  }, []);
-
   // 主色变更时自动生成其他颜色
   const handleMainColorChange = useCallback(
     (value: string) => {
       setAccentMainColor(value);
-      setAccentHoverColor(adjustColor(value, 0.9));
-      setAccentLightColor(adjustColor(value, 1.2));
-      setAccentLightDarkColor(adjustColor(value, 0.7));
+      setAccentHoverColor(adjustHex(value, 0.9));
+      setAccentLightColor(adjustHex(value, 1.2));
+      setAccentLightDarkColor(adjustHex(value, 0.7));
 
       if (!editingAccent && (isAutoAccentName || accentName.trim() === '')) {
         setAccentName(buildAutoAccentName(value));
         setIsAutoAccentName(true);
       }
     },
-    [adjustColor, editingAccent, isAutoAccentName, accentName, buildAutoAccentName],
+    [editingAccent, isAutoAccentName, accentName, buildAutoAccentName],
   );
 
   // 初始化表单

@@ -107,6 +107,8 @@ export interface AppState {
   // 主题和语言
   theme: Theme;
   accentColor: AccentColor;
+  /** 用户主动设置的强调色偏好（undefined 表示未显式设定，跟随项目定制色或系统默认） */
+  userAccentColor?: AccentColor;
   language: Language;
   backgroundImage?: string;
   backgroundOpacity: number;
