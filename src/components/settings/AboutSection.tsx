@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Info, Mail, FileText, Loader2, Sparkles } from 'lucide-react';
-import clsx from 'clsx';
 
 import { useAppStore } from '@/stores/appStore';
 import { ManualWelcomeDialog } from '@/components/WelcomeDialog';
@@ -17,6 +16,7 @@ interface ResolvedContent {
   description: string;
   license: string;
   contact: string;
+  logoPath: string | undefined;
   iconPath: string | undefined;
 }
 
@@ -28,8 +28,11 @@ export function AboutSection() {
     description: '',
     license: '',
     contact: '',
+    logoPath: undefined,
     iconPath: undefined,
   });
+  const [logoFailed, setLogoFailed] = useState(false);
+  const [iconFailed, setIconFailed] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(false);
   const closeWelcomeDialog = useCallback(() => setShowWelcomeDialog(false), []);
@@ -50,14 +53,17 @@ export function AboutSection() {
 
       const options = { translations, basePath };
 
-      const [description, license, contact, iconPath] = await Promise.all([
+      const [description, license, contact, logoPath, iconPath] = await Promise.all([
         resolveContent(projectInterface.description, options),
         resolveContent(projectInterface.license, options),
         resolveContent(projectInterface.contact, options),
+        loadIconAsDataUrl(projectInterface.logo, basePath, translations),
         loadIconAsDataUrl(projectInterface.icon, basePath, translations),
       ]);
 
-      setResolvedContent({ description, license, contact, iconPath });
+      setResolvedContent({ description, license, contact, logoPath, iconPath });
+      setLogoFailed(false);
+      setIconFailed(false);
       setIsLoading(false);
     };
 
@@ -75,6 +81,18 @@ export function AboutSection() {
     );
   };
 
+  const canUseLogo = Boolean(resolvedContent.logoPath && !logoFailed);
+  const canUseIcon = Boolean(
+    resolvedContent.iconPath &&
+    !iconFailed &&
+    resolvedContent.iconPath !== resolvedContent.logoPath,
+  );
+  const displayLogo = canUseLogo
+    ? resolvedContent.logoPath
+    : canUseIcon
+      ? resolvedContent.iconPath
+      : undefined;
+
   return (
     <section id="section-about" className="space-y-4 scroll-mt-4">
       <h2 className="text-sm font-semibold text-text-primary uppercase tracking-wider flex items-center gap-2">
@@ -85,27 +103,27 @@ export function AboutSection() {
       <div className="bg-bg-secondary rounded-xl p-6 border border-border">
         {/* Logo 和名称 */}
         <div className="text-center mb-6">
-          {resolvedContent.iconPath ? (
+          {displayLogo ? (
             <img
-              src={resolvedContent.iconPath}
+              key={displayLogo}
+              src={displayLogo}
               alt={projectName}
               className="w-20 h-20 mx-auto mb-4 rounded-2xl shadow-lg object-contain"
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+              onError={() => {
+                if (canUseLogo) {
+                  setLogoFailed(true);
+                } else {
+                  setIconFailed(true);
+                }
               }}
             />
-          ) : null}
-          <div
-            className={clsx(
-              'w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-lg',
-              resolvedContent.iconPath && 'hidden',
-            )}
-          >
-            <span className="text-3xl font-bold text-white">
-              {projectName.charAt(0).toUpperCase()}
-            </span>
-          </div>
+          ) : (
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-accent to-accent-hover flex items-center justify-center shadow-lg">
+              <span className="text-3xl font-bold text-white">
+                {projectName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
           <h3 className="text-xl font-bold text-text-primary">{projectName}</h3>
           {/* <p className="text-sm text-text-secondary mt-1">
             {t('about.version')}: {version}

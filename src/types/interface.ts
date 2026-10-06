@@ -7,6 +7,7 @@ export interface ProjectInterface {
   label?: string;
   title?: string;
   icon?: string;
+  logo?: string;
   mirrorchyan_rid?: string;
   mirrorchyan_multiplatform?: boolean;
   github?: string;

@@ -26,3 +26,5 @@ dist-ssr
 # maafw
 interface.json
 mxu.json
+
+build.bat
